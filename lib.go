@@ -15,8 +15,8 @@ const (
 	MsgTypeRecvText      = 3  // 接收文字簡訊 (一般用戶不開放)
 	MsgTypeSendWAPPush   = 13 // 傳送 WAP PUSH
 	MsgTypeCheckWAPPush  = 14 // 查詢 WAP PUSH 傳送結果
-	MsgTypeSendInlText   = 15 // 傳送國際簡訊
-	MsgTypeCheckInlText  = 2  // Same as MsgTypeCheckText
+	MsgTypeSendIntlText  = 15 // 傳送國際簡訊
+	MsgTypeCheckIntlText = 2  // Same as MsgTypeCheckText
 	MsgTypeCancelSchText = 16 // 取消預約文字簡訊
 	MsgCodingBig5        = 1  // Big5
 	MsgCodingBinary      = 2  // Binary
@@ -197,22 +197,8 @@ func (t *Server) Auth(username, password string) error {
 	return handleRecvMsg(&ret, AuthRetCode)
 }
 
-func (t *Server) SendTextInUTF8(recipient, message string) (
+func (t *Server) sendTextNow(msg *SendMsg, recipient, message string) (
 	msgId string, err error) {
-	l1 := len(recipient)
-	if l1 > 10 {
-		err = errors.New("recipient number too long, max 10")
-		return
-	}
-	l2 := len(message)
-	if l2 > 159 {
-		err = errors.New("message too long, max 159")
-		return
-	}
-	msg := SendMsg{
-		MsgType:   MsgTypeSendText,
-		MsgCoding: MsgCodingUTF8,
-	}
 	n, err := fillBytes(msg.MsgSet[:], recipient+"\x0001\x00")
 	if err != nil {
 		return
@@ -243,6 +229,40 @@ func (t *Server) SendTextInUTF8(recipient, message string) (
 	}
 	msgId = string(ret.RetContent[:ret.RetContentLen])
 	return
+}
+
+func (t *Server) SendTextInUTF8Now(recipient, message string) (
+	string, error) {
+	l1 := len(recipient)
+	if l1 > 10 {
+		return "", errors.New("recipient number too long, max 10")
+	}
+	l2 := len(message)
+	if l2 > 159 {
+		return "", errors.New("message too long, max 159")
+	}
+	msg := SendMsg{
+		MsgType:   MsgTypeSendText,
+		MsgCoding: MsgCodingUTF8,
+	}
+	return t.sendTextNow(&msg, recipient, message)
+}
+
+func (t *Server) SendIntlTextInUTF8Now(recipient, message string) (
+	string, error) {
+	l1 := len(recipient)
+	if l1 > 20 {
+		return "", errors.New("recipient number too long, max 20")
+	}
+	l2 := len(message)
+	if l2 > 159 {
+		return "", errors.New("message too long, max 159")
+	}
+	msg := SendMsg{
+		MsgType:   MsgTypeSendIntlText,
+		MsgCoding: MsgCodingUTF8,
+	}
+	return t.sendTextNow(&msg, recipient, message)
 }
 
 func (t *Server) CheckTextStatus(msgId string) error {

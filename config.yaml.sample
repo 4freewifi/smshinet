@@ -2,3 +2,4 @@ addr: api.hiair.hinet.net:8000
 username: username
 password: password
 mobile: 0912345678
+intlmobile: +886912345678

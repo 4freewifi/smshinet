@@ -9,10 +9,29 @@ import (
 )
 
 type config struct {
-	Addr     string
-	Username string
-	Password string
-	Mobile   string
+	Addr       string
+	Username   string
+	Password   string
+	Mobile     string
+	IntlMobile string
+}
+
+func waitStatus(t *testing.T, s *Server, msgId string) {
+Loop:
+	for {
+		err := s.CheckTextStatus(msgId)
+		switch err {
+		case nil:
+			break Loop
+		case CheckRetCode[1], CheckRetCode[2], CheckRetCode[4], CheckRetCode[19]:
+			glog.Infof("Got error `%s', wait 10 seconds before retrying.", err.Error())
+			time.Sleep(10 * time.Second)
+			continue
+		default:
+			t.Fatal(err)
+		}
+	}
+	return
 }
 
 func TestAll(t *testing.T) {
@@ -37,23 +56,15 @@ func TestAll(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	msgId, err := s.SendTextInUTF8(conf.Mobile, "smshinet test")
+	msgId, err := s.SendTextInUTF8Now(conf.Mobile, "smshinet 中文 UTF-8 測試")
 	if err != nil {
 		t.Fatal(err)
 	}
-Loop:
-	for {
-		err = s.CheckTextStatus(msgId)
-		switch err {
-		case nil:
-			break Loop
-		case CheckRetCode[1], CheckRetCode[2], CheckRetCode[4], CheckRetCode[19]:
-			glog.Infof("Got error `%s', wait 10 seconds before retrying.", err.Error())
-			time.Sleep(10 * time.Second)
-			continue
-		default:
-			t.Fatal(err)
-		}
+	waitStatus(t, &s, msgId)
+	msgId, err = s.SendIntlTextInUTF8Now(conf.IntlMobile,
+		"smshinet 中文 國際 UTF-8 測試")
+	if err != nil {
+		t.Fatal(err)
 	}
-	return
+	waitStatus(t, &s, msgId)
 }
