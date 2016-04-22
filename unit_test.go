@@ -16,10 +16,10 @@ type config struct {
 	IntlMobile string
 }
 
-func waitStatus(t *testing.T, s *Server, msgId string) {
+func waitStatus(t *testing.T, c *Client, msgId string) {
 Loop:
 	for {
-		err := s.CheckTextStatus(msgId)
+		err := c.CheckTextStatus(msgId)
 		switch err {
 		case nil:
 			break Loop
@@ -44,27 +44,27 @@ func TestAll(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	s := Server{
+	c := Client{
 		Addr: conf.Addr,
 	}
-	err = s.Dial()
+	err = c.Dial()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer s.Close()
-	err = s.Auth(conf.Username, conf.Password)
+	defer c.Close()
+	err = c.Auth(conf.Username, conf.Password)
 	if err != nil {
 		t.Fatal(err)
 	}
-	msgId, err := s.SendTextInUTF8Now(conf.Mobile, "smshinet 中文 UTF-8 測試")
+	msgId, err := c.SendTextInUTF8Now(conf.Mobile, "smshinet 中文 UTF-8 測試")
 	if err != nil {
 		t.Fatal(err)
 	}
-	waitStatus(t, &s, msgId)
-	msgId, err = s.SendIntlTextInUTF8Now(conf.IntlMobile,
+	waitStatus(t, &c, msgId)
+	msgId, err = c.SendIntlTextInUTF8Now(conf.IntlMobile,
 		"smshinet 中文 國際 UTF-8 測試")
 	if err != nil {
 		t.Fatal(err)
 	}
-	waitStatus(t, &s, msgId)
+	waitStatus(t, &c, msgId)
 }

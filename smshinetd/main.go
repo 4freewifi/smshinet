@@ -31,7 +31,7 @@ func (t Echo) Echo(r *http.Request, args *EchoArgs, ret *string) error {
 
 type SMSHiNet struct {
 	config *Config
-	server *smshinet.Server
+	client *smshinet.Client
 }
 
 type TextMsgArgs struct {
@@ -45,7 +45,7 @@ type SendMsgRet struct {
 
 func (t *SMSHiNet) SendTextSMS(r *http.Request, args *TextMsgArgs,
 	ret *SendMsgRet) error {
-	s, err := t.server.SendTextInUTF8Now(args.Recipient, args.Message)
+	s, err := t.client.SendTextInUTF8Now(args.Recipient, args.Message)
 	if err != nil {
 		return err
 	}
@@ -79,7 +79,7 @@ func main() {
 	}
 	sms := SMSHiNet{
 		config: &conf,
-		server: &smshinet.Server{Addr: conf.Addr},
+		client: &smshinet.Client{Addr: conf.Addr},
 	}
 	err = srv.RegisterService(&sms, "")
 	if err != nil {
@@ -91,13 +91,13 @@ func main() {
 	// mount to /jsonrpc
 	http.Handle("/jsonrpc", srv)
 	// connect and authenticate to HiNet "Socket to Air" server
-	err = sms.server.Dial()
+	err = sms.client.Dial()
 	if err != nil {
 		glog.Fatalf("Error connecting to HiNet server: %s", err.Error())
 	}
-	defer sms.server.Close()
+	defer sms.client.Close()
 	glog.Info("Connected to HiNet server")
-	err = sms.server.Auth(conf.Username, conf.Password)
+	err = sms.client.Auth(conf.Username, conf.Password)
 	if err != nil {
 		glog.Fatalf("Authentication error: %s", err.Error())
 	}

@@ -118,12 +118,12 @@ var CommonRetCode map[byte]error = map[byte]error{
 	58: errors.New("foreign message not apply yet"),
 }
 
-type Server struct {
+type Client struct {
 	Addr string // something like 'api.hiair.hinet.net:8000'
 	conn net.Conn
 }
 
-func (t *Server) Dial() error {
+func (t *Client) Dial() error {
 	conn, err := net.Dial("tcp", t.Addr)
 	if err != nil {
 		return err
@@ -132,7 +132,7 @@ func (t *Server) Dial() error {
 	return nil
 }
 
-func (t *Server) Close() error {
+func (t *Client) Close() error {
 	return t.conn.Close()
 }
 
@@ -166,7 +166,7 @@ func fillBytes(buf []byte, src string) (byte, error) {
 	return byte(n), nil
 }
 
-func (t *Server) Auth(username, password string) error {
+func (t *Client) Auth(username, password string) error {
 	l1 := len(username)
 	if l1 > 8 {
 		return errors.New("username too long, max 8")
@@ -197,7 +197,7 @@ func (t *Server) Auth(username, password string) error {
 	return handleRecvMsg(&ret, AuthRetCode)
 }
 
-func (t *Server) sendTextNow(msg *SendMsg, recipient, message string) (
+func (t *Client) sendTextNow(msg *SendMsg, recipient, message string) (
 	msgId string, err error) {
 	n, err := fillBytes(msg.MsgSet[:], recipient+"\x0001\x00")
 	if err != nil {
@@ -231,7 +231,7 @@ func (t *Server) sendTextNow(msg *SendMsg, recipient, message string) (
 	return
 }
 
-func (t *Server) SendTextInUTF8Now(recipient, message string) (
+func (t *Client) SendTextInUTF8Now(recipient, message string) (
 	string, error) {
 	l1 := len(recipient)
 	if l1 > 10 {
@@ -248,7 +248,7 @@ func (t *Server) SendTextInUTF8Now(recipient, message string) (
 	return t.sendTextNow(&msg, recipient, message)
 }
 
-func (t *Server) SendIntlTextInUTF8Now(recipient, message string) (
+func (t *Client) SendIntlTextInUTF8Now(recipient, message string) (
 	string, error) {
 	l1 := len(recipient)
 	if l1 > 20 {
@@ -265,7 +265,7 @@ func (t *Server) SendIntlTextInUTF8Now(recipient, message string) (
 	return t.sendTextNow(&msg, recipient, message)
 }
 
-func (t *Server) CheckTextStatus(msgId string) error {
+func (t *Client) CheckTextStatus(msgId string) error {
 	msg := SendMsg{
 		MsgType:   MsgTypeCheckText,
 		MsgCoding: MsgCodingBig5,
