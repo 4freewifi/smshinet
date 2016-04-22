@@ -1,18 +1,19 @@
-[![Circle CI](https://circleci.com/gh/4freewifi/smshinet.svg?style=svg)](https://circleci.com/gh/4freewifi/smshinet)
-
 [![godoc](https://godoc.org/github.com/4freewifi/smshinet?status.svg)](https://godoc.org/github.com/4freewifi/smshinet)
 
 
 # HiNet SMS
 
-Go implementation of HiNet SMS API, including both library and a
-standalone JSON-RPC server.
+Go implementation of HiNet SMS service client, including both library
+and a standalone JSON-RPC service proxy.
 
 For complete document, check
 https://godoc.org/github.com/4freewifi/smshinet .
 
 # Example
 
+* `unit_test.go` should give a pretty good idea about library usage.
+* Check `contrib/jsonrpc.py` regarding how to use the standalone
+  JSON-RPC server.
 
 # References
 
