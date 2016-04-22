@@ -1,3 +1,4 @@
 addr: api.hiair.hinet.net:8000
 username: username
 password: password
+pool: 1

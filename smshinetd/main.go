@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"github.com/4freewifi/smshinet"
 	"github.com/golang/glog"
 	"github.com/gorilla/rpc/v2"
 	"github.com/gorilla/rpc/v2/json2"
@@ -15,6 +14,7 @@ type Config struct {
 	Addr     string
 	Username string
 	Password string
+	Pool     int
 }
 
 // echo RPC for testing
@@ -26,30 +26,7 @@ type EchoArgs struct {
 
 func (t Echo) Echo(r *http.Request, args *EchoArgs, ret *string) error {
 	*ret = args.In
-	return nil
-}
-
-type SMSHiNet struct {
-	config *Config
-	client *smshinet.Client
-}
-
-type TextMsgArgs struct {
-	Recipient string `json:"recipient"`
-	Message   string `json:"message"`
-}
-
-type SendMsgRet struct {
-	MsgId string
-}
-
-func (t *SMSHiNet) SendTextSMS(r *http.Request, args *TextMsgArgs,
-	ret *SendMsgRet) error {
-	s, err := t.client.SendTextInUTF8Now(args.Recipient, args.Message)
-	if err != nil {
-		return err
-	}
-	*ret = SendMsgRet{MsgId: s}
+	glog.V(1).Infof("Echo %s", args.In)
 	return nil
 }
 
@@ -79,7 +56,11 @@ func main() {
 	}
 	sms := SMSHiNet{
 		config: &conf,
-		client: &smshinet.Client{Addr: conf.Addr},
+		pool:   &ResourcePool{},
+	}
+	err = sms.Initialize(conf.Pool)
+	if err != nil {
+		glog.Fatal(err)
 	}
 	err = srv.RegisterService(&sms, "")
 	if err != nil {
@@ -90,19 +71,6 @@ func main() {
 	}
 	// mount to /jsonrpc
 	http.Handle("/jsonrpc", srv)
-	// connect and authenticate to HiNet "Socket to Air" server
-	err = sms.client.Dial()
-	if err != nil {
-		glog.Fatalf("Error connecting to HiNet server: %s", err.Error())
-	}
-	defer sms.client.Close()
-	glog.Info("Connected to HiNet server")
-	err = sms.client.Auth(conf.Username, conf.Password)
-	if err != nil {
-		glog.Fatalf("Authentication error: %s", err.Error())
-	}
-	glog.Info("Authenticated")
-
 	glog.Infof("Listening on %s", *srvaddr)
 	glog.Fatal(http.ListenAndServe(*srvaddr, nil))
 }

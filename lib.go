@@ -129,6 +129,7 @@ func (t *Client) Dial() error {
 		return err
 	}
 	t.conn = conn
+	glog.Infof("Connected to %s", t.Addr)
 	return nil
 }
 
@@ -194,11 +195,25 @@ func (t *Client) Auth(username, password string) error {
 	if err != nil {
 		return err
 	}
-	return handleRecvMsg(&ret, AuthRetCode)
+	err = handleRecvMsg(&ret, AuthRetCode)
+	if err != nil {
+		return err
+	}
+	glog.Info("Authenticated")
+	return nil
+}
+
+func (t *Client) DialAndAuth(username, password string) error {
+	err := t.Dial()
+	if err != nil {
+		return err
+	}
+	return t.Auth(username, password)
 }
 
 func (t *Client) sendTextNow(msg *SendMsg, recipient, message string) (
 	msgId string, err error) {
+	glog.V(1).Infof("sendTextNow to %s: %s", recipient, message)
 	n, err := fillBytes(msg.MsgSet[:], recipient+"\x0001\x00")
 	if err != nil {
 		return
