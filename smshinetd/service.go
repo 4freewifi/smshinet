@@ -49,7 +49,11 @@ func (t *SMSHiNet) keepReconnect(id int, c *smshinet.Client) {
 
 func (t *SMSHiNet) SendTextSMS(r *http.Request, args *TextMsgArgs,
 	ret *SendMsgRet) (err error) {
-	id, v := t.pool.Get()
+	// 1 second timeout
+	id, v, err := t.pool.GetWithTimeout(time.Second)
+	if err != nil {
+		return
+	}
 	c := v.(*smshinet.Client)
 
 	// try this twice
@@ -62,7 +66,7 @@ func (t *SMSHiNet) SendTextSMS(r *http.Request, args *TextMsgArgs,
 		}
 		glog.Warningf("SendTextSMS error: %s", err.Error())
 		i++
-		t.reconnect(id, c)
+		t.reconnect(id, c) // ignore error
 	}
 	if i > 1 {
 		go t.keepReconnect(id, c)

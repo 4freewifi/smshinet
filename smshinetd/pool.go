@@ -7,6 +7,8 @@ import (
 )
 
 var NotInitialized error = errors.New("Not initialized")
+var ReInitialize error = errors.New("Cannot re-initialize")
+var Unavailable error = errors.New("Resource temporarily unavailable")
 
 type ResourcePool struct {
 	pool   []interface{}
@@ -16,7 +18,7 @@ type ResourcePool struct {
 
 func (t *ResourcePool) Initialize(r []interface{}) error {
 	if t.tokens != nil {
-		return errors.New("Cannot re-initialize")
+		return ReInitialize
 	}
 	t.pool = r
 	size := len(r)
@@ -44,7 +46,7 @@ func (t *ResourcePool) GetWithTimeout(timeout time.Duration) (
 	select {
 	case <-time.After(timeout):
 		glog.V(1).Info("ResourcePool get timeout")
-		return 0, nil, errors.New("Timeout")
+		return 0, nil, Unavailable
 	case id, ok := <-t.tokens:
 		if !ok {
 			panic(NotInitialized)
