@@ -14,7 +14,6 @@ type Config struct {
 	Addr     string
 	Username string
 	Password string
-	Pool     int
 }
 
 // echo RPC for testing
@@ -33,6 +32,7 @@ func (t Echo) Echo(r *http.Request, args *EchoArgs, ret *string) error {
 func main() {
 	conffile := flag.String("conf", "config.yaml", "Config YAML file")
 	srvaddr := flag.String("addr", "localhost:3059", "Host address to listen on")
+	poolsize := flag.Int("pool", 1, "Size of thread pool")
 	flag.Parse()
 	b, err := ioutil.ReadFile(*conffile)
 	if err != nil {
@@ -58,7 +58,7 @@ func main() {
 		config: &conf,
 		pool:   &ResourcePool{},
 	}
-	err = sms.Initialize(conf.Pool)
+	err = sms.Initialize(*poolsize)
 	if err != nil {
 		glog.Fatal(err)
 	}
