@@ -1,0 +1,9 @@
+[submodule "vendor/github.com/golang/glog"]
+	path = vendor/github.com/golang/glog
+	url = https://github.com/golang/glog/
+[submodule "vendor/github.com/gorilla/rpc"]
+	path = vendor/github.com/gorilla/rpc
+	url = https://github.com/gorilla/rpc/
+[submodule "vendor/gopkg.in/yaml.v2"]
+	path = vendor/gopkg.in/yaml.v2
+	url = https://gopkg.in/yaml.v2/
