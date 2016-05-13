@@ -253,8 +253,8 @@ func (t *Client) SendTextInUTF8Now(recipient, message string) (
 		return "", errors.New("recipient number too long, max 10")
 	}
 	l2 := len(message)
-	if l2 > 159 {
-		return "", errors.New("message too long, max 159")
+	if l2 > MsgContentMaxLen-1 {
+		return "", fmt.Errorf("message too long, max %d", MsgContentMaxLen-1)
 	}
 	msg := SendMsg{
 		MsgType:   MsgTypeSendText,
@@ -270,8 +270,8 @@ func (t *Client) SendIntlTextInUTF8Now(recipient, message string) (
 		return "", errors.New("recipient number too long, max 20")
 	}
 	l2 := len(message)
-	if l2 > 159 {
-		return "", errors.New("message too long, max 159")
+	if l2 > MsgContentMaxLen-1 {
+		return "", fmt.Errorf("message too long, max %d", MsgContentMaxLen-1)
 	}
 	msg := SendMsg{
 		MsgType:   MsgTypeSendIntlText,
