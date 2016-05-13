@@ -1,2 +1,5 @@
 /smshinet.test
 /config.yaml
+/smshinetd/smshinetd
+/smshinetd/smshinetd-alpine
+/smshinetd/config.yaml

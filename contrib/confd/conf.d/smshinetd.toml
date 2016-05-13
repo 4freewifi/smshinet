@@ -1,8 +1,0 @@
-[template]
-src = "config.yaml.tmpl"
-dest = "/go/src/github.com/4freewifi/smshinet/smshinetd/config.yaml"
-keys = [
-    "/smshinetd/addr",
-    "/smshinetd/username",
-    "/smshinetd/password",
-]

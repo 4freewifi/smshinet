@@ -11,7 +11,11 @@ for E in SMSHINETD_ADDR SMSHINETD_USERNAME SMSHINETD_PASSWORD; do
 done
 
 # generate config file `config.yaml'
-confd -onetime -backend=env -confdir="/go/src/github.com/4freewifi/smshinet/contrib/confd"
+cat > config.yaml <<EOF
+addr: ${SMSHINETD_ADDR}
+username: ${SMSHINETD_USERNAME}
+password: ${SMSHINETD_PASSWORD}
+EOF
 
 exec ./smshinetd -logtostderr=true -stderrthreshold=INFO \
-    -addr="${ADDR}" -pool="${THREADPOOL}" -conf="config.yaml"
+    -addr="${ADDR}" -pool="${THREADPOOL}" $*
