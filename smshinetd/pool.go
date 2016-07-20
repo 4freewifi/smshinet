@@ -27,7 +27,7 @@ func (t *ResourcePool) Initialize(r []interface{}) error {
 		t.tokens <- i
 	}
 	t.size = size
-	glog.V(1).Infof("ResourcePool initialized, size %d", size)
+	glog.Infof("ResourcePool initialized, size %d", size)
 	return nil
 }
 
@@ -45,7 +45,7 @@ func (t *ResourcePool) GetWithTimeout(timeout time.Duration) (
 	int, interface{}, error) {
 	select {
 	case <-time.After(timeout):
-		glog.V(1).Info("ResourcePool get timeout")
+		glog.Warningf("ResourcePool get timeout: %v", timeout)
 		return 0, nil, Unavailable
 	case id, ok := <-t.tokens:
 		if !ok {

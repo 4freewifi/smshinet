@@ -138,7 +138,7 @@ func (t *Client) Close() error {
 }
 
 func handleRecvMsg(ret *RecvMsg, definition map[byte]error) error {
-	glog.V(2).Infof("RecvMsg %v", ret)
+	glog.V(1).Infof("RecvMsg %v", ret)
 	if ret.RetContentLen > 0 {
 		glog.V(1).Infof("RecvMsg.RetContent: %s",
 			ret.RetContent[:ret.RetContentLen])
@@ -185,7 +185,7 @@ func (t *Client) Auth(username, password string) error {
 		return err
 	}
 	msg.MsgSetLen = n
-	glog.V(2).Infof("SendMsg %v", msg)
+	glog.V(1).Infof("SendMsg %v", msg)
 	err = binary.Write(t.conn, binary.BigEndian, msg)
 	if err != nil {
 		return err
@@ -213,7 +213,7 @@ func (t *Client) DialAndAuth(username, password string) error {
 
 func (t *Client) sendTextNow(msg *SendMsg, recipient, message string) (
 	msgId string, err error) {
-	glog.V(1).Infof("sendTextNow to %s: %s", recipient, message)
+	glog.Infof("sendTextNow to %s: %s", recipient, message)
 	n, err := fillBytes(msg.MsgSet[:], recipient+"\x0001\x00")
 	if err != nil {
 		return
@@ -224,7 +224,7 @@ func (t *Client) sendTextNow(msg *SendMsg, recipient, message string) (
 		return
 	}
 	msg.MsgContentLen = n
-	glog.V(2).Infof("SendMsg %v", msg)
+	glog.V(1).Infof("SendMsg %v", msg)
 	err = binary.Write(t.conn, binary.BigEndian, msg)
 	if err != nil {
 		return
@@ -290,7 +290,7 @@ func (t *Client) CheckTextStatus(msgId string) error {
 		return err
 	}
 	msg.MsgSetLen = n
-	glog.V(2).Infof("SendMsg %v", msg)
+	glog.V(1).Infof("SendMsg %v", msg)
 	err = binary.Write(t.conn, binary.BigEndian, msg)
 	if err != nil {
 		return err
