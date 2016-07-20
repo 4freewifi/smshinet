@@ -1,5 +1,8 @@
-import urllib2
+# python3
+
+import argparse
 import json
+import requests
 
 
 serial = 0
@@ -7,30 +10,33 @@ serial = 0
 
 def rpc_call(url, method, args):
     global serial
-    data = json.dumps({
+    data = {
         'jsonrpc': '2.0',
         'method': method,
         'params': args,
         'id': serial,
-    })
+    }
     serial += 1
-    req = urllib2.Request(
-        url, data, {'Content-Type': 'application/json'})
-    f = urllib2.urlopen(req)
-    res = f.read()
-    return json.loads(res)
+    r = requests.post(url, json=data)
+    return r.json()
 
 
 def main():
-    url = 'http://localhost:3059/jsonrpc'
-    try:
-        print rpc_call(url, 'Echo.Echo', {'in': 'TEST'})
-        print rpc_call(url, 'SMSHiNet.SendTextSMS', {
-            'recipient': '0912345678',
-            'message': 'jsonrpc test',
-        })
-    except urllib2.HTTPError as e:
-        print e.code, e.read()
+    p = argparse.ArgumentParser(description='Command line tool for smshinetd')
+    p.add_argument('--uri', '-u', default='http://localhost:3059/jsonrpc',
+                   help='URI of smshinetd service')
+    p.add_argument('--dry-run', '-n', action='store_true')
+    p.add_argument('recipient', help='Mobile number of recipient')
+    p.add_argument('message', nargs='?', default='jsonrpc test',
+                   help='Message to send')
+    args = p.parse_args()
+    print(rpc_call(args.uri, 'Echo.Echo', {'in': 'TEST'}))
+    if args.dry_run:
+        return
+    print(rpc_call(args.uri, 'SMSHiNet.SendTextSMS', {
+        'recipient': args.recipient,
+        'message': args.message,
+    }))
 
 
 if __name__ == '__main__':
