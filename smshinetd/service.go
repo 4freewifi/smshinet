@@ -3,6 +3,8 @@ package main
 import (
 	"github.com/4freewifi/smshinet"
 	"github.com/golang/glog"
+	"io"
+	"net"
 	"net/http"
 	"time"
 )
@@ -49,32 +51,30 @@ func (t *SMSHiNet) keepReconnect(id int, c *smshinet.Client) {
 
 func (t *SMSHiNet) SendTextSMS(r *http.Request, args *TextMsgArgs,
 	ret *SendMsgRet) (err error) {
-	// 1 second timeout
-	id, v, err := t.pool.GetWithTimeout(time.Second)
-	if err != nil {
-		return
-	}
-	c := v.(*smshinet.Client)
-
-	// try this twice
-	i := 0
 	var msgId string
 	for {
+		id, v := t.pool.Get()
+		c := v.(*smshinet.Client)
 		msgId, err = c.SendTextInUTF8Now(args.Recipient, args.Message)
-		if err == nil || i > 1 {
-			break
+		if err == nil {
+			goto BREAK
 		}
-		glog.Warningf("SendTextSMS error: %s", err.Error())
-		i++
-		t.reconnect(id, c) // ignore error
-	}
-	if i > 1 {
+		// give up if neither network error nor EOF
+		if _, netError := err.(net.Error); !netError && err != io.EOF {
+			glog.Errorf("SendTextSMS error: %s", err.Error())
+			goto BREAK
+		}
+		glog.Warningf("SendTextSMS network error: %s", err.Error())
 		go t.keepReconnect(id, c)
-		return err
+		continue
+	BREAK:
+		t.pool.Put(id, v)
+		break
 	}
-	t.pool.Put(id, v)
-	*ret = SendMsgRet{MsgId: msgId}
-	return nil
+	if err == nil {
+		*ret = SendMsgRet{MsgId: msgId}
+	}
+	return
 }
 
 func (t *SMSHiNet) Initialize(size int) error {
