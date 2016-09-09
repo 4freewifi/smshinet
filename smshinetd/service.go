@@ -19,8 +19,13 @@ type TextMsgArgs struct {
 	Message   string `json:"message"`
 }
 
-type SendMsgRet struct {
-	MsgId string
+type MessageID struct {
+	MessageID string
+}
+
+type TextStatus struct {
+	Success bool
+	Error   string
 }
 
 const (
@@ -49,22 +54,27 @@ func (t *SMSHiNet) keepReconnect(id int, c *smshinet.Client) {
 	t.pool.Put(id, c)
 }
 
+func errHandle(name string, err error) (stop bool) {
+	// give up if neither network error nor EOF
+	if _, netError := err.(net.Error); !netError && err != io.EOF {
+		glog.Errorf("%s error: %s", name, err.Error())
+		return true
+	}
+	glog.Warningf("%s network error: %s", name, err.Error())
+	return false
+}
+
 func (t *SMSHiNet) SendTextSMS(r *http.Request, args *TextMsgArgs,
-	ret *SendMsgRet) (err error) {
+	ret *MessageID) (err error) {
 	var msgId string
 	for {
 		id, v := t.pool.Get()
 		c := v.(*smshinet.Client)
-		msgId, err = c.SendTextInUTF8Now(args.Recipient, args.Message)
-		if err == nil {
+		msgId, err = c.SendTextInUTF8NowWithExpire(
+			args.Recipient, args.Message, time.Minute)
+		if err == nil || errHandle("SendTExtSMS", err) {
 			goto BREAK
 		}
-		// give up if neither network error nor EOF
-		if _, netError := err.(net.Error); !netError && err != io.EOF {
-			glog.Errorf("SendTextSMS error: %s", err.Error())
-			goto BREAK
-		}
-		glog.Warningf("SendTextSMS network error: %s", err.Error())
 		go t.keepReconnect(id, c)
 		continue
 	BREAK:
@@ -72,7 +82,36 @@ func (t *SMSHiNet) SendTextSMS(r *http.Request, args *TextMsgArgs,
 		break
 	}
 	if err == nil {
-		*ret = SendMsgRet{MsgId: msgId}
+		*ret = MessageID{MessageID: msgId}
+	}
+	return
+}
+
+func (t *SMSHiNet) CheckTextStatus(r *http.Request, args *MessageID,
+	ret *TextStatus) (err error) {
+	for {
+		id, v := t.pool.Get()
+		c := v.(*smshinet.Client)
+		err = c.CheckTextStatus(args.MessageID)
+		if err == nil || errHandle("CheckTextStatus", err) {
+			goto BREAK
+		}
+		go t.keepReconnect(id, c)
+		continue
+	BREAK:
+		t.pool.Put(id, v)
+		break
+	}
+	if err == nil {
+		*ret = TextStatus{
+			Success: true,
+			Error:   "",
+		}
+	} else {
+		*ret = TextStatus{
+			Success: false,
+			Error:   err.Error(),
+		}
 	}
 	return
 }

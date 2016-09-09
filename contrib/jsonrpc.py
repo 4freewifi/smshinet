@@ -2,7 +2,10 @@
 
 import argparse
 import json
+import time
+
 import requests
+
 
 
 serial = 0
@@ -33,10 +36,15 @@ def main():
     print(rpc_call(args.uri, 'Echo.Echo', {'in': 'TEST'}))
     if args.dry_run:
         return
-    print(rpc_call(args.uri, 'SMSHiNet.SendTextSMS', {
+    r = rpc_call(args.uri, 'SMSHiNet.SendTextSMS', {
         'recipient': args.recipient,
         'message': args.message,
-    }))
+    })
+    print(r, ', wait for 60 secs to check')
+    msgid = r['result']
+    time.sleep(60)
+    r = rpc_call(args.uri, 'SMSHiNet.CheckTextStatus', msgid)
+    print(r)
 
 
 if __name__ == '__main__':

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"net"
+	"time"
 )
 
 const (
@@ -26,6 +27,7 @@ const (
 	MsgContentMaxLen     = 160
 	RetSetMaxLen         = 80
 	RetContentMaxLen     = 160
+	MaxExpireMins        = 1440 // mmmm, 0001 ~ 1440 minutes
 )
 
 type SendMsg struct {
@@ -149,13 +151,18 @@ func handleRecvMsg(ret *RecvMsg, definition map[byte]error) error {
 	}
 	err, ok := definition[code]
 	if ok {
-		return err
+		goto EXIT
 	}
 	err, ok = CommonRetCode[code]
 	if ok {
-		return err
+		goto EXIT
 	}
-	return fmt.Errorf("Unknown ret_code %d", code)
+	err = fmt.Errorf("Unknown ret_code %d", code)
+	glog.Error(err.Error())
+	return err
+EXIT:
+	glog.Warningf("handleRecvMsg: %s", err.Error())
+	return err
 }
 
 func fillBytes(buf []byte, src string) (byte, error) {
@@ -211,12 +218,34 @@ func (t *Client) DialAndAuth(username, password string) error {
 	return t.Auth(username, password)
 }
 
-func (t *Client) sendTextNow(msg *SendMsg, recipient, message string) (
-	msgId string, err error) {
-	glog.Infof("sendTextNow to %s: %s", recipient, message)
-	n, err := fillBytes(msg.MsgSet[:], recipient+"\x0001\x00")
-	if err != nil {
-		return
+func (t *Client) sendTextNow(msg *SendMsg, recipient, message string,
+	duration time.Duration) (msgId string, err error) {
+	glog.Infof("sendTextNow to %s expire %d: %s",
+		recipient, int64(duration), message)
+	l := len(message)
+	if l > MsgContentMaxLen-1 {
+		return "", fmt.Errorf("message too long, max %d",
+			MsgContentMaxLen-1)
+	}
+	var n byte
+	if duration == 0 {
+		n, err = fillBytes(msg.MsgSet[:], recipient+"\x0001\x00")
+		if err != nil {
+			return
+		}
+	} else {
+		mins := duration / time.Minute
+		if mins > MaxExpireMins {
+			err = fmt.Errorf(
+				"Cannot set expire time longer then %d minutes",
+				MaxExpireMins)
+			return
+		}
+		s := fmt.Sprintf("%s\x0002\x00%4d\x00", recipient, mins)
+		n, err = fillBytes(msg.MsgSet[:], s)
+		if err != nil {
+			return
+		}
 	}
 	msg.MsgSetLen = n
 	n, err = fillBytes(msg.MsgContent[:], message+"\x00")
@@ -243,41 +272,46 @@ func (t *Client) sendTextNow(msg *SendMsg, recipient, message string) (
 		return
 	}
 	msgId = string(ret.RetContent[:ret.RetContentLen])
+	glog.Infof("sendTextNow to %s succeeded with msgId %s",
+		recipient, msgId)
 	return
 }
 
-func (t *Client) SendTextInUTF8Now(recipient, message string) (
-	string, error) {
-	l1 := len(recipient)
-	if l1 > 10 {
+func (t *Client) SendTextInUTF8NowWithExpire(recipient, message string,
+	duration time.Duration) (string, error) {
+	l := len(recipient)
+	if l > 10 {
 		return "", errors.New("recipient number too long, max 10")
-	}
-	l2 := len(message)
-	if l2 > MsgContentMaxLen-1 {
-		return "", fmt.Errorf("message too long, max %d", MsgContentMaxLen-1)
 	}
 	msg := SendMsg{
 		MsgType:   MsgTypeSendText,
 		MsgCoding: MsgCodingUTF8,
 	}
-	return t.sendTextNow(&msg, recipient, message)
+	return t.sendTextNow(&msg, recipient, message, duration)
 }
 
-func (t *Client) SendIntlTextInUTF8Now(recipient, message string) (
+func (t *Client) SendTextInUTF8Now(recipient, message string) (
 	string, error) {
-	l1 := len(recipient)
-	if l1 > 20 {
+	return t.SendTextInUTF8NowWithExpire(recipient, message, 0)
+}
+
+func (t *Client) SendIntlTextInUTF8NowWithExpire(recipient, message string,
+	duration time.Duration) (
+	string, error) {
+	l := len(recipient)
+	if l > 20 {
 		return "", errors.New("recipient number too long, max 20")
-	}
-	l2 := len(message)
-	if l2 > MsgContentMaxLen-1 {
-		return "", fmt.Errorf("message too long, max %d", MsgContentMaxLen-1)
 	}
 	msg := SendMsg{
 		MsgType:   MsgTypeSendIntlText,
 		MsgCoding: MsgCodingUTF8,
 	}
-	return t.sendTextNow(&msg, recipient, message)
+	return t.sendTextNow(&msg, recipient, message, duration)
+}
+
+func (t *Client) SendIntlTextInUTF8Now(recipient, message string) (
+	string, error) {
+	return t.SendIntlTextInUTF8NowWithExpire(recipient, message, 0)
 }
 
 func (t *Client) CheckTextStatus(msgId string) error {

@@ -17,21 +17,21 @@ type config struct {
 }
 
 func waitStatus(t *testing.T, c *Client, msgId string) {
-Loop:
-	for {
+	for i := 0; i < 6; i++ {
 		err := c.CheckTextStatus(msgId)
 		switch err {
 		case nil:
-			break Loop
+			return
 		case CheckRetCode[1], CheckRetCode[2], CheckRetCode[4], CheckRetCode[19]:
-			glog.Infof("Got error `%s', wait 10 seconds before retrying.", err.Error())
+			glog.Infof("Got error `%s', wait 10 seconds before retrying.",
+				err.Error())
 			time.Sleep(10 * time.Second)
 			continue
 		default:
-			t.Fatal(err)
+			t.Fatal(err.Error())
 		}
 	}
-	return
+	t.Fatal("Cannot get definitive result within one minute")
 }
 
 func TestAll(t *testing.T) {
@@ -56,15 +56,20 @@ func TestAll(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	msgId, err := c.SendTextInUTF8Now(conf.Mobile, "smshinet 中文 UTF-8 測試")
+	msgId, err := c.SendTextInUTF8NowWithExpire(
+		conf.Mobile, "smshinet 中文 UTF-8 測試", time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
+	glog.Info("Wait one minute before checking status")
+	time.Sleep(time.Minute)
 	waitStatus(t, &c, msgId)
-	msgId, err = c.SendIntlTextInUTF8Now(conf.IntlMobile,
-		"smshinet 中文 國際 UTF-8 測試")
+	msgId, err = c.SendIntlTextInUTF8NowWithExpire(
+		conf.IntlMobile, "smshinet 中文 國際 UTF-8 測試", time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
+	glog.Info("Wait one minute before checking status")
+	time.Sleep(time.Minute)
 	waitStatus(t, &c, msgId)
 }

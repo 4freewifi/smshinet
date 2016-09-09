@@ -31,12 +31,14 @@ func (t Echo) Echo(r *http.Request, args *EchoArgs, ret *string) error {
 
 func main() {
 	conffile := flag.String("conf", "config.yaml", "Config YAML file")
-	srvaddr := flag.String("addr", "localhost:3059", "Host address to listen on")
+	srvaddr := flag.String("addr", "localhost:3059",
+		"Host address to listen on")
 	poolsize := flag.Int("pool", 1, "Size of thread pool")
 	flag.Parse()
 	b, err := ioutil.ReadFile(*conffile)
 	if err != nil {
-		glog.Fatalf("Error reading config file %s: %s, \nhint: check config.yaml.sample",
+		glog.Fatalf("Error reading config file %s: %s, \n"+
+			"hint: check config.yaml.sample",
 			conffile, err.Error())
 	}
 	conf := Config{}
@@ -66,8 +68,13 @@ func main() {
 	if err != nil {
 		glog.Fatal(err)
 	}
-	if !srv.HasMethod("SMSHiNet.SendTextSMS") {
-		glog.Fatal("Cannot find required JSON-RPC method: SMGP.Submit")
+	for _, name := range []string{
+		"SMSHiNet.SendTextSMS",
+		"SMSHiNet.CheckTextStatus"} {
+		if srv.HasMethod(name) {
+			continue
+		}
+		glog.Fatalf("Cannot find required JSON-RPC method: %s", name)
 	}
 	// mount to /jsonrpc
 	http.Handle("/jsonrpc", srv)
