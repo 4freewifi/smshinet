@@ -116,29 +116,29 @@ func (t *SMSHiNet) CheckTextStatus(r *http.Request, args *MessageID,
 	return
 }
 
-func (t *SMSHiNet) Initialize(size int) error {
+func (t *SMSHiNet) Initialize(size int) (err error) {
 	clients := make([]interface{}, size)
-	defer func() {
-		for _, v := range clients {
-			if v == nil {
-				continue
-			}
-			c := v.(*smshinet.Client)
-			c.Close()
-		}
-	}()
 	for i := 0; i < size; i++ {
 		c := &smshinet.Client{Addr: t.config.Addr}
-		err := c.DialAndAuth(t.config.Username, t.config.Password)
+		err = c.DialAndAuth(t.config.Username, t.config.Password)
 		if err != nil {
-			return err
+			goto ERROR_EXIT
 		}
 		clients[i] = c
 	}
-	err := t.pool.Initialize(clients)
+	err = t.pool.Initialize(clients)
 	if err != nil {
-		return err
+		goto ERROR_EXIT
 	}
 	glog.Infof("Initialized with %d connections.", size)
 	return nil
+ERROR_EXIT:
+	for _, v := range clients {
+		if v == nil {
+			continue
+		}
+		c := v.(*smshinet.Client)
+		c.Close()
+	}
+	return err
 }
