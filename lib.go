@@ -144,13 +144,13 @@ func (t *Client) dial(network, addr string) (net.Conn, error) {
 		}
 	}
 	if t.Dialer != nil {
-        c, err := t.Dialer(network, addr)
-        if c == nil && err == nil {
-            err = errors.New("net/http: smshinet.Dialer hook returned (nil, nil)")
-        }
-        return c, err
-    }
-    return net.Dial(network, addr)
+		c, err := t.Dialer(network, addr)
+		if c == nil && err == nil {
+			err = errors.New("smshinet.Dialer hook returned (nil, nil)")
+		}
+		return c, err
+	}
+	return net.Dial(network, addr)
 }
 
 func (t *Client) Dial() error {
@@ -280,7 +280,7 @@ func (t *Client) sendTextNow(msg *SendMsg, recipient, message string,
 	if err != nil {
 		return
 	}
-	msg.MsgContentLen = n
+	msg.MsgContentLen = n - 1
 	t.Logger.Debugf("SendMsg %v", msg)
 	err = binary.Write(t.conn, binary.BigEndian, msg)
 	if err != nil {
