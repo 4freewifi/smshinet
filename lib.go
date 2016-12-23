@@ -120,18 +120,46 @@ var CommonRetCode map[byte]error = map[byte]error{
 	58: errors.New("foreign message not apply yet"),
 }
 
+type Logger struct {
+	Debugf   func(format string, args ...interface{})
+	Infof    func(format string, args ...interface{})
+	Errorf   func(format string, args ...interface{})
+	Warningf func(format string, args ...interface{})
+}
+
 type Client struct {
 	Addr string // something like 'api.hiair.hinet.net:8000'
+	Dialer func(network, addr string) (net.Conn, error)
+	Logger *Logger
 	conn net.Conn
 }
 
+func (t *Client) dial(network, addr string) (net.Conn, error) {
+	if t.Logger == nil {
+		t.Logger = &Logger{
+			Debugf: glog.V(1).Infof,
+			Infof: glog.Infof,
+			Errorf: glog.Errorf,
+			Warningf: glog.Warningf,
+		}
+	}
+	if t.Dialer != nil {
+        c, err := t.Dialer(network, addr)
+        if c == nil && err == nil {
+            err = errors.New("net/http: smshinet.Dialer hook returned (nil, nil)")
+        }
+        return c, err
+    }
+    return net.Dial(network, addr)
+}
+
 func (t *Client) Dial() error {
-	conn, err := net.Dial("tcp", t.Addr)
+	conn, err := t.dial("tcp", t.Addr)
 	if err != nil {
 		return err
 	}
 	t.conn = conn
-	glog.Infof("Connected to %s", t.Addr)
+	t.Logger.Infof("Connected to %s", t.Addr)
 	return nil
 }
 
@@ -139,10 +167,10 @@ func (t *Client) Close() error {
 	return t.conn.Close()
 }
 
-func handleRecvMsg(ret *RecvMsg, definition map[byte]error) error {
-	glog.V(1).Infof("RecvMsg %v", ret)
+func (t *Client) handleRecvMsg(ret *RecvMsg, definition map[byte]error) error {
+	t.Logger.Debugf("RecvMsg %v", ret)
 	if ret.RetContentLen > 0 {
-		glog.V(1).Infof("RecvMsg.RetContent: %s",
+		t.Logger.Debugf("RecvMsg.RetContent: %s",
 			ret.RetContent[:ret.RetContentLen])
 	}
 	code := ret.RetCode
@@ -158,14 +186,14 @@ func handleRecvMsg(ret *RecvMsg, definition map[byte]error) error {
 		goto EXIT
 	}
 	err = fmt.Errorf("Unknown ret_code %d", code)
-	glog.Error(err.Error())
+	t.Logger.Errorf("%s", err.Error())
 	return err
 EXIT:
-	glog.Warningf("handleRecvMsg: %s", err.Error())
+	t.Logger.Warningf("handleRecvMsg: %s", err.Error())
 	return err
 }
 
-func fillBytes(buf []byte, src string) (byte, error) {
+func (t *Client) fillBytes(buf []byte, src string) (byte, error) {
 	expect := len(src)
 	n := copy(buf, src)
 	if n != expect {
@@ -187,12 +215,12 @@ func (t *Client) Auth(username, password string) error {
 		MsgType:   MsgTypeAuth,
 		MsgCoding: MsgCodingBig5,
 	}
-	n, err := fillBytes(msg.MsgSet[:], username+"\x00"+password+"\x00")
+	n, err := t.fillBytes(msg.MsgSet[:], username+"\x00"+password+"\x00")
 	if err != nil {
 		return err
 	}
 	msg.MsgSetLen = n
-	glog.V(1).Infof("SendMsg %v", msg)
+	t.Logger.Debugf("SendMsg %v", msg)
 	err = binary.Write(t.conn, binary.BigEndian, msg)
 	if err != nil {
 		return err
@@ -202,11 +230,11 @@ func (t *Client) Auth(username, password string) error {
 	if err != nil {
 		return err
 	}
-	err = handleRecvMsg(&ret, AuthRetCode)
+	err = t.handleRecvMsg(&ret, AuthRetCode)
 	if err != nil {
 		return err
 	}
-	glog.Info("Authenticated")
+	t.Logger.Infof("%s Authenticated", username)
 	return nil
 }
 
@@ -220,7 +248,7 @@ func (t *Client) DialAndAuth(username, password string) error {
 
 func (t *Client) sendTextNow(msg *SendMsg, recipient, message string,
 	duration time.Duration) (msgId string, err error) {
-	glog.Infof("sendTextNow to %s expire %d: %s",
+	t.Logger.Infof("sendTextNow to %s expire %d: %s",
 		recipient, int64(duration), message)
 	l := len(message)
 	if l > MsgContentMaxLen-1 {
@@ -229,7 +257,7 @@ func (t *Client) sendTextNow(msg *SendMsg, recipient, message string,
 	}
 	var n byte
 	if duration == 0 {
-		n, err = fillBytes(msg.MsgSet[:], recipient+"\x0001\x00")
+		n, err = t.fillBytes(msg.MsgSet[:], recipient+"\x0001\x00")
 		if err != nil {
 			return
 		}
@@ -242,18 +270,18 @@ func (t *Client) sendTextNow(msg *SendMsg, recipient, message string,
 			return
 		}
 		s := fmt.Sprintf("%s\x0002\x00%4d\x00", recipient, mins)
-		n, err = fillBytes(msg.MsgSet[:], s)
+		n, err = t.fillBytes(msg.MsgSet[:], s)
 		if err != nil {
 			return
 		}
 	}
 	msg.MsgSetLen = n
-	n, err = fillBytes(msg.MsgContent[:], message+"\x00")
+	n, err = t.fillBytes(msg.MsgContent[:], message+"\x00")
 	if err != nil {
 		return
 	}
 	msg.MsgContentLen = n
-	glog.V(1).Infof("SendMsg %v", msg)
+	t.Logger.Debugf("SendMsg %v", msg)
 	err = binary.Write(t.conn, binary.BigEndian, msg)
 	if err != nil {
 		return
@@ -263,7 +291,7 @@ func (t *Client) sendTextNow(msg *SendMsg, recipient, message string,
 	if err != nil {
 		return
 	}
-	err = handleRecvMsg(&ret, SendRetCode)
+	err = t.handleRecvMsg(&ret, SendRetCode)
 	if err != nil {
 		return
 	}
@@ -272,7 +300,7 @@ func (t *Client) sendTextNow(msg *SendMsg, recipient, message string,
 		return
 	}
 	msgId = string(ret.RetContent[:ret.RetContentLen])
-	glog.Infof("sendTextNow to %s succeeded with msgId %s",
+	t.Logger.Infof("sendTextNow to %s succeeded with msgId %s",
 		recipient, msgId)
 	return
 }
@@ -319,12 +347,12 @@ func (t *Client) CheckTextStatus(msgId string) error {
 		MsgType:   MsgTypeCheckText,
 		MsgCoding: MsgCodingBig5,
 	}
-	n, err := fillBytes(msg.MsgSet[:], msgId+"\x00")
+	n, err := t.fillBytes(msg.MsgSet[:], msgId+"\x00")
 	if err != nil {
 		return err
 	}
 	msg.MsgSetLen = n
-	glog.V(1).Infof("SendMsg %v", msg)
+	t.Logger.Debugf("SendMsg %v", msg)
 	err = binary.Write(t.conn, binary.BigEndian, msg)
 	if err != nil {
 		return err
@@ -334,5 +362,5 @@ func (t *Client) CheckTextStatus(msgId string) error {
 	if err != nil {
 		return err
 	}
-	return handleRecvMsg(&ret, CheckRetCode)
+	return t.handleRecvMsg(&ret, CheckRetCode)
 }
