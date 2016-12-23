@@ -61,15 +61,15 @@ func TestAll(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	glog.Info("Wait one minute before checking status")
-	time.Sleep(time.Minute)
+	glog.Info("Wait 30 seconds before checking status")
+	time.Sleep(30 * time.Second)
 	waitStatus(t, &c, msgId)
 	msgId, err = c.SendIntlTextInUTF8NowWithExpire(
 		conf.IntlMobile, "smshinet 中文 國際 UTF-8 測試", time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
-	glog.Info("Wait one minute before checking status")
-	time.Sleep(time.Minute)
+	glog.Info("Wait 30 seconds before checking status")
+	time.Sleep(30 * time.Second)
 	waitStatus(t, &c, msgId)
 }

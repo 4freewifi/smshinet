@@ -40,9 +40,9 @@ def main():
         'recipient': args.recipient,
         'message': args.message,
     })
-    print(r, ', wait for 60 secs to check')
+    print(r, ', wait for 30 secs to check')
     msgid = r['result']
-    time.sleep(60)
+    time.sleep(30)
     r = rpc_call(args.uri, 'SMSHiNet.CheckTextStatus', msgid)
     print(r)
 
